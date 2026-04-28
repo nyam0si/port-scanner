@@ -1,0 +1,3 @@
+# Simple Port Scanner - No external dependencies required!
+# Uses only Python standard library (socket, threading, sys, datetime)
+# Python 3.6+ recommended
