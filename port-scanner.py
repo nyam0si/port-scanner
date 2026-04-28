@@ -18,22 +18,25 @@ YELLOW = '\033[93m'
 BLUE = '\033[94m'
 RESET = '\033[0m'
 
-def scan_port(target, port, timeout=1):
+# Global timeout variable that can be modified
+SCAN_TIMEOUT = 1.0
+
+def scan_port(target, port):
     """
     Scan a single port on the target host.
     
     Args:
         target (str): IP address or hostname
         port (int): Port number to scan
-        timeout (int): Connection timeout in seconds
     
     Returns:
         bool: True if port is open, False otherwise
     """
+    global SCAN_TIMEOUT
     try:
         # Create a socket object
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
+        sock.settimeout(SCAN_TIMEOUT)
         
         # Attempt to connect
         result = sock.connect_ex((target, port))
@@ -46,9 +49,16 @@ def scan_port(target, port, timeout=1):
         
     except socket.gaierror:
         print(f"{RED}[!] Hostname could not be resolved{RESET}")
-        sys.exit(1)
+        return False
     except socket.error:
         return False
+
+def scan_and_record(target, port, open_ports_list):
+    """Helper function for threading to record open ports"""
+    if scan_port(target, port):
+        open_ports_list.append(port)
+        service = get_service_name(port)
+        print(f"  {GREEN}[+] Port {port}/tcp is OPEN - {service}{RESET}")
 
 def scan_ports(target, start_port, end_port, max_threads=100):
     """
@@ -99,13 +109,6 @@ def scan_ports(target, start_port, end_port, max_threads=100):
     
     return open_ports
 
-def scan_and_record(target, port, open_ports_list):
-    """Helper function for threading to record open ports"""
-    if scan_port(target, port):
-        open_ports_list.append(port)
-        service = get_service_name(port)
-        print(f"  {GREEN}[+] Port {port}/tcp is OPEN - {service}{RESET}")
-
 def get_service_name(port):
     """
     Return common service name for a given port number.
@@ -143,18 +146,9 @@ def get_service_name(port):
     }
     return common_ports.get(port, "Unknown")
 
-def validate_ip(ip):
-    """Basic IP address validation"""
-    parts = ip.split('.')
-    if len(parts) != 4:
-        return False
-    for part in parts:
-        if not part.isdigit() or int(part) < 0 or int(part) > 255:
-            return False
-    return True
-
 def main():
     """Main function to handle user input and orchestrate the scan"""
+    global SCAN_TIMEOUT
     
     # Display banner
     print(f"""
@@ -190,18 +184,14 @@ def main():
     # Get timeout
     try:
         timeout_input = input(f"{YELLOW}[?] Enter timeout in seconds (default 1): {RESET}").strip()
-        timeout = float(timeout_input) if timeout_input else 1.0
+        SCAN_TIMEOUT = float(timeout_input) if timeout_input else 1.0
     except ValueError:
-        timeout = 1.0
-    
-    # Update global timeout for scan_port function
-    global SCAN_TIMEOUT
-    SCAN_TIMEOUT = timeout
+        SCAN_TIMEOUT = 1.0
     
     # Confirm with user
     print(f"\n{BLUE}[*] Target: {target_ip}{RESET}")
     print(f"{BLUE}[*] Port Range: {start_port}-{end_port}{RESET}")
-    print(f"{BLUE}[*] Timeout: {timeout} seconds{RESET}")
+    print(f"{BLUE}[*] Timeout: {SCAN_TIMEOUT} seconds{RESET}")
     
     confirm = input(f"\n{YELLOW}[?] Start scan? (y/n): {RESET}").strip().lower()
     if confirm != 'y':
@@ -233,31 +223,6 @@ def main():
     except Exception as e:
         print(f"{RED}[!] An error occurred: {e}{RESET}")
         sys.exit(1)
-
-# Allow timeout to be modified globally
-SCAN_TIMEOUT = 1.0
-
-# Override scan_port to use the global timeout
-def scan_port(target, port, timeout=None):
-    """Scan a single port with configurable timeout"""
-    timeout = timeout or SCAN_TIMEOUT
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
-        result = sock.connect_ex((target, port))
-        sock.close()
-        return result == 0
-    except:
-        return False
-
-# Re-bind the function
-import types
-scan_port.__code__ = types.FunctionType(
-    scan_port.__code__,
-    globals(),
-    'scan_port',
-    argdefs=(None,)
-)
 
 if __name__ == "__main__":
     main()
