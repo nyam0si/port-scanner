@@ -1,0 +1,15 @@
+[*] Starting scan on 192.168.1.1
+[*] Scanning ports 20-443
+[*] Start time: 2024-01-15 14:30:22
+--------------------------------------------------
+  [+] Port 22/tcp is OPEN - SSH
+  [+] Port 80/tcp is OPEN - HTTP
+  [+] Port 443/tcp is OPEN - HTTPS
+--------------------------------------------------
+[+] Scan completed at: 2024-01-15 14:30:45
+[+] Open ports found: 3
+
+Open Ports:
+  22/tcp - SSH
+  80/tcp - HTTP
+  443/tcp - HTTPS
